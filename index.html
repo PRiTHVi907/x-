@@ -1,0 +1,918 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Staircase</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Roboto+Mono:wght@400;600;700&display=swap');
+
+    :root {
+      --bg: #000000;
+      --grid-empty: #262626;
+      --text: #f2f6ff;
+      --panel: #0b0b0b;
+      --panel-border: #1f1f1f;
+      --cell-size: 42px;
+      --cell-gap: 5px;
+      --cell-radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Orbitron', 'Roboto Mono', monospace;
+      min-height: 100%;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      text-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
+    }
+
+    .app {
+      width: min(1200px, 100%);
+      min-height: 100vh;
+      padding: 22px;
+      position: relative;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .card {
+      background: linear-gradient(180deg, #0a0a0a 0%, #060606 100%);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.06), inset 0 0 10px rgba(255, 255, 255, 0.03);
+    }
+
+    #setup {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    #setup h1 {
+      text-align: center;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.75), 0 0 18px rgba(255, 255, 255, 0.4);
+    }
+
+    .wizard-step {
+      border: 1px solid #1e1e1e;
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: #050505;
+    }
+
+    .wizard-step h2 {
+      font-size: 1.05rem;
+      letter-spacing: 0.05em;
+    }
+
+    .step-help {
+      color: #d2d7dd;
+      font-size: 0.9rem;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .count-btn,
+    .nav-btn,
+    .swatch,
+    .play-btn {
+      cursor: pointer;
+      border-radius: 10px;
+      border: 1px solid #303030;
+      background: #111;
+      color: var(--text);
+      font-family: inherit;
+      text-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
+      transition: 140ms ease;
+    }
+
+    .count-btn {
+      min-width: 60px;
+      padding: 10px 14px;
+      font-size: 1rem;
+    }
+
+    .count-btn.active {
+      border-color: #f0f8ff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
+      background: #1a1a1a;
+    }
+
+    .input,
+    .name-input,
+    .color-input {
+      border: 1px solid #2c2c2c;
+      border-radius: 8px;
+      background: #090909;
+      color: #ffffff;
+      padding: 10px;
+      font-family: inherit;
+      text-shadow: 0 0 4px rgba(255, 255, 255, 0.35);
+      outline: none;
+      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.05);
+    }
+
+    .input:focus,
+    .name-input:focus,
+    .color-input:focus {
+      border-color: #f2f2f2;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.25), inset 0 0 8px rgba(255, 255, 255, 0.08);
+    }
+
+    .player-color-row,
+    .player-name-row {
+      display: grid;
+      grid-template-columns: 120px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .palette {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .swatch {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border-radius: 8px;
+    }
+
+    .swatch.selected {
+      outline: 2px solid #fff;
+      box-shadow: 0 0 9px currentColor;
+    }
+
+    .wizard-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      gap: 12px;
+    }
+
+    .nav-btn,
+    .play-btn {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .nav-btn.primary,
+    .play-btn {
+      border-color: #7dd3fc;
+      box-shadow: 0 0 12px rgba(125, 211, 252, 0.35);
+    }
+
+    .error {
+      color: #ff7ab6;
+      min-height: 1.2em;
+      font-size: 0.9rem;
+      text-shadow: 0 0 8px rgba(255, 122, 182, 0.7);
+    }
+
+    #game {
+      height: calc(100vh - 44px);
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 18px;
+    }
+
+    .sidebar {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .turn-banner {
+      padding: 12px;
+      border: 1px solid #2b2b2b;
+      border-radius: 10px;
+      background: #070707;
+      font-size: 1rem;
+      line-height: 1.35;
+      letter-spacing: 0.04em;
+    }
+
+    .scores {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: auto;
+    }
+
+    .score-item {
+      display: grid;
+      grid-template-columns: 16px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid #222;
+      border-radius: 10px;
+      background: #050505;
+    }
+
+    .score-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .score-item.active {
+      border-color: #f0f8ff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+
+    .board-shell {
+      position: relative;
+      min-width: 0;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      background: #020202;
+      border-radius: 14px;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.9), inset 0 0 12px rgba(255, 255, 255, 0.25);
+    }
+
+    .board {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: var(--cell-gap);
+      padding: 6px;
+    }
+
+    .board-row {
+      display: grid;
+      gap: var(--cell-gap);
+    }
+
+    .cell {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      border-radius: var(--cell-radius);
+      border: 1px solid var(--grid-empty);
+      background: rgba(255, 255, 255, 0.01);
+      box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      transition: transform 100ms ease, box-shadow 130ms ease;
+    }
+
+    .cell:hover {
+      transform: translateY(-1px);
+      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.09);
+    }
+
+    .cell.filled {
+      cursor: not-allowed;
+    }
+
+    .outline {
+      position: absolute;
+      pointer-events: none;
+      border: 3px solid;
+      border-radius: 999px;
+      box-shadow: 0 0 8px currentColor, 0 0 20px currentColor;
+      opacity: 0;
+      animation: lineGlow 450ms ease forwards;
+    }
+
+    @keyframes lineGlow {
+      from {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .float-score {
+      position: absolute;
+      pointer-events: none;
+      font-weight: 700;
+      text-shadow: 0 0 8px currentColor, 0 0 18px currentColor;
+      animation: floatUp 1000ms ease forwards;
+      white-space: nowrap;
+    }
+
+    @keyframes floatUp {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 0) scale(0.8);
+      }
+      15% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -26px) scale(1.08);
+      }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      border-radius: 14px;
+      z-index: 10;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .overlay h2 {
+      font-size: clamp(2rem, 6vw, 4rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 980px) {
+      #game {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        height: auto;
+      }
+
+      .sidebar {
+        order: 1;
+      }
+
+      .board-shell {
+        order: 2;
+        min-height: 62vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section id="setup" class="card"></section>
+
+    <section id="game" class="hidden">
+      <aside class="sidebar card">
+        <div id="turnBanner" class="turn-banner"></div>
+        <h3>Scoreboard</h3>
+        <div id="scores" class="scores"></div>
+      </aside>
+
+      <div id="boardShell" class="board-shell">
+        <div id="board" class="board"></div>
+        <div id="winOverlay" class="overlay hidden">
+          <h2 id="winnerText"></h2>
+          <button id="playAgainBtn" class="play-btn">Play Again</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const NEON_COLORS = [
+      '#ff2bd6',
+      '#39ff14',
+      '#00f7ff',
+      '#fff01f',
+      '#9d4dff',
+      '#ff6b00'
+    ];
+
+    const state = {
+      setup: {
+        step: 1,
+        playerCount: null,
+        gridSize: 7,
+        colors: [],
+        names: []
+      },
+      game: null
+    };
+
+    const setupEl = document.getElementById('setup');
+    const gameEl = document.getElementById('game');
+    const boardEl = document.getElementById('board');
+    const scoresEl = document.getElementById('scores');
+    const turnBannerEl = document.getElementById('turnBanner');
+    const boardShellEl = document.getElementById('boardShell');
+    const winOverlayEl = document.getElementById('winOverlay');
+    const winnerTextEl = document.getElementById('winnerText');
+    const playAgainBtn = document.getElementById('playAgainBtn');
+
+    const toAlpha = (hex, alpha) => {
+      const clean = hex.replace('#', '');
+      const parsed = clean.length === 3
+        ? clean.split('').map(ch => ch + ch).join('')
+        : clean;
+      const r = parseInt(parsed.slice(0, 2), 16);
+      const g = parseInt(parsed.slice(2, 4), 16);
+      const b = parseInt(parsed.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    function resetSetup() {
+      state.setup = {
+        step: 1,
+        playerCount: null,
+        gridSize: 7,
+        colors: [],
+        names: []
+      };
+      state.game = null;
+      gameEl.classList.add('hidden');
+      setupEl.classList.remove('hidden');
+      renderSetup();
+    }
+
+    function renderSetup() {
+      const { step } = state.setup;
+      setupEl.innerHTML = `
+        <h1>NEON STAIRCASE</h1>
+        <div class="step-help">Setup step ${step} of 4</div>
+        <div id="stepMount"></div>
+      `;
+
+      const mount = document.getElementById('stepMount');
+      if (step === 1) renderStep1(mount);
+      if (step === 2) renderStep2(mount);
+      if (step === 3) renderStep3(mount);
+      if (step === 4) renderStep4(mount);
+    }
+
+    function renderStep1(mount) {
+      mount.innerHTML = `
+        <div class="wizard-step">
+          <h2>1) Player Count</h2>
+          <p class="step-help">Choose 2, 3, or 4 players.</p>
+          <div class="row" id="countRow"></div>
+          <div id="error" class="error"></div>
+          <div class="wizard-nav">
+            <button class="nav-btn" disabled>Back</button>
+            <button id="nextBtn" class="nav-btn primary">Next</button>
+          </div>
+        </div>
+      `;
+
+      const countRow = document.getElementById('countRow');
+      [2, 3, 4].forEach(value => {
+        const btn = document.createElement('button');
+        btn.className = `count-btn ${state.setup.playerCount === value ? 'active' : ''}`;
+        btn.textContent = `${value}`;
+        btn.addEventListener('click', () => {
+          state.setup.playerCount = value;
+          const nextColors = Array.from({ length: value }, (_, i) => state.setup.colors[i] || NEON_COLORS[i]);
+          state.setup.colors = nextColors;
+          state.setup.names = Array.from({ length: value }, (_, i) => state.setup.names[i] || `Player ${i + 1}`);
+          renderSetup();
+        });
+        countRow.appendChild(btn);
+      });
+
+      document.getElementById('nextBtn').addEventListener('click', () => {
+        if (!state.setup.playerCount) {
+          document.getElementById('error').textContent = 'Select a player count to continue.';
+          return;
+        }
+        state.setup.step = 2;
+        renderSetup();
+      });
+    }
+
+    function renderStep2(mount) {
+      mount.innerHTML = `
+        <div class="wizard-step">
+          <h2>2) Grid Size</h2>
+          <p class="step-help">Set staircase base rows (minimum 7).</p>
+          <input id="gridSizeInput" class="input" type="number" min="7" value="${state.setup.gridSize}" />
+          <div id="error" class="error"></div>
+          <div class="wizard-nav">
+            <button id="backBtn" class="nav-btn">Back</button>
+            <button id="nextBtn" class="nav-btn primary">Next</button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('backBtn').addEventListener('click', () => {
+        state.setup.step = 1;
+        renderSetup();
+      });
+
+      document.getElementById('nextBtn').addEventListener('click', () => {
+        const value = Number(document.getElementById('gridSizeInput').value);
+        if (!Number.isInteger(value) || value < 7) {
+          document.getElementById('error').textContent = 'Grid size must be an integer of 7 or greater.';
+          return;
+        }
+        state.setup.gridSize = value;
+        state.setup.step = 3;
+        renderSetup();
+      });
+    }
+
+    function renderStep3(mount) {
+      const players = state.setup.playerCount || 0;
+      const rows = Array.from({ length: players }, (_, i) => {
+        const color = state.setup.colors[i] || NEON_COLORS[i];
+        const swatches = NEON_COLORS.map(hex => `
+          <button class="swatch ${color.toLowerCase() === hex.toLowerCase() ? 'selected' : ''}" data-player="${i}" data-hex="${hex}" style="background:${hex};color:${hex}" title="${hex}"></button>
+        `).join('');
+
+        return `
+          <div class="player-color-row">
+            <strong>Player ${i + 1}</strong>
+            <div class="palette">${swatches}</div>
+            <input class="color-input" data-player="${i}" type="color" value="${color}" />
+          </div>
+        `;
+      }).join('');
+
+      mount.innerHTML = `
+        <div class="wizard-step">
+          <h2>3) Neon Color Selection</h2>
+          <p class="step-help">Each player must have a unique color.</p>
+          <div>${rows}</div>
+          <div id="error" class="error"></div>
+          <div class="wizard-nav">
+            <button id="backBtn" class="nav-btn">Back</button>
+            <button id="nextBtn" class="nav-btn primary">Next</button>
+          </div>
+        </div>
+      `;
+
+      mount.querySelectorAll('.swatch').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const player = Number(btn.dataset.player);
+          state.setup.colors[player] = btn.dataset.hex;
+          renderSetup();
+        });
+      });
+
+      mount.querySelectorAll('.color-input').forEach(input => {
+        input.addEventListener('input', () => {
+          const player = Number(input.dataset.player);
+          state.setup.colors[player] = input.value;
+        });
+      });
+
+      document.getElementById('backBtn').addEventListener('click', () => {
+        state.setup.step = 2;
+        renderSetup();
+      });
+
+      document.getElementById('nextBtn').addEventListener('click', () => {
+        const colors = [...state.setup.colors].map(c => c.toLowerCase());
+        const unique = new Set(colors);
+        if (colors.length !== unique.size) {
+          document.getElementById('error').textContent = 'Players cannot share the exact same color.';
+          return;
+        }
+        state.setup.step = 4;
+        renderSetup();
+      });
+    }
+
+    function renderStep4(mount) {
+      const players = state.setup.playerCount || 0;
+      const rows = Array.from({ length: players }, (_, i) => {
+        const current = state.setup.names[i] || `Player ${i + 1}`;
+        return `
+          <div class="player-name-row">
+            <strong style="color:${state.setup.colors[i]};text-shadow:0 0 10px ${state.setup.colors[i]}">Player ${i + 1}</strong>
+            <input class="name-input" data-player="${i}" maxlength="20" value="${current}" />
+            <span style="opacity:0.65">optional</span>
+          </div>
+        `;
+      }).join('');
+
+      mount.innerHTML = `
+        <div class="wizard-step">
+          <h2>4) Name Entry</h2>
+          <p class="step-help">Set display names (or keep defaults) and start.</p>
+          <div>${rows}</div>
+          <div id="error" class="error"></div>
+          <div class="wizard-nav">
+            <button id="backBtn" class="nav-btn">Back</button>
+            <button id="startBtn" class="nav-btn primary">Start Game</button>
+          </div>
+        </div>
+      `;
+
+      mount.querySelectorAll('.name-input').forEach(input => {
+        input.addEventListener('input', () => {
+          const idx = Number(input.dataset.player);
+          state.setup.names[idx] = input.value;
+        });
+      });
+
+      document.getElementById('backBtn').addEventListener('click', () => {
+        state.setup.step = 3;
+        renderSetup();
+      });
+
+      document.getElementById('startBtn').addEventListener('click', () => {
+        const cleaned = (state.setup.names || []).map((name, i) => {
+          const trimmed = String(name || '').trim();
+          return trimmed || `Player ${i + 1}`;
+        });
+        state.setup.names = cleaned;
+        startGame();
+      });
+    }
+
+    function startGame() {
+      const n = state.setup.gridSize;
+      const players = Array.from({ length: state.setup.playerCount }, (_, i) => ({
+        id: i,
+        name: state.setup.names[i],
+        color: state.setup.colors[i],
+        score: 0
+      }));
+
+      const cells = [];
+      for (let rowFromBottom = 1; rowFromBottom <= n; rowFromBottom++) {
+        const length = n - rowFromBottom + 1;
+        for (let col = 1; col <= length; col++) {
+          cells.push({
+            key: `${rowFromBottom}-${col}`,
+            rowFromBottom,
+            col,
+            owner: null
+          });
+        }
+      }
+
+      state.game = {
+        n,
+        players,
+        currentPlayer: 0,
+        cells,
+        totalCells: cells.length,
+        filledCount: 0,
+        completedRows: new Set(),
+        completedCols: new Set(),
+        gameOver: false
+      };
+
+      setupEl.classList.add('hidden');
+      gameEl.classList.remove('hidden');
+      clearEffects();
+      renderGame();
+    }
+
+    function clearEffects() {
+      boardShellEl.querySelectorAll('.outline,.float-score').forEach(node => node.remove());
+      winOverlayEl.classList.add('hidden');
+    }
+
+    function renderGame() {
+      renderBoard();
+      renderTurnBanner();
+      renderScores();
+    }
+
+    function renderBoard() {
+      const { n, cells } = state.game;
+      const cellByPos = new Map(cells.map(c => [c.key, c]));
+      boardEl.innerHTML = '';
+      boardEl.style.setProperty('--cell-size', `${Math.max(28, Math.min(48, Math.floor(520 / n)))}px`);
+
+      for (let rowFromBottom = n; rowFromBottom >= 1; rowFromBottom--) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'board-row';
+        rowEl.style.gridTemplateColumns = `repeat(${n}, var(--cell-size))`;
+
+        const len = n - rowFromBottom + 1;
+
+        for (let col = 1; col <= n; col++) {
+          const slot = document.createElement('div');
+          if (col <= len) {
+            const cellData = cellByPos.get(`${rowFromBottom}-${col}`);
+            slot.className = `cell ${cellData.owner !== null ? 'filled' : ''}`;
+            slot.dataset.row = String(rowFromBottom);
+            slot.dataset.col = String(col);
+            if (cellData.owner !== null) {
+              const player = state.game.players[cellData.owner];
+              slot.style.background = toAlpha(player.color, 0.3);
+              slot.style.borderColor = player.color;
+              slot.style.boxShadow = `0 0 8px ${player.color}, inset 0 0 6px ${toAlpha(player.color, 0.6)}`;
+            }
+            slot.addEventListener('click', onCellClick);
+          }
+          rowEl.appendChild(slot);
+        }
+
+        boardEl.appendChild(rowEl);
+      }
+    }
+
+    function renderTurnBanner() {
+      const current = state.game.players[state.game.currentPlayer];
+      turnBannerEl.innerHTML = `Current Turn: <strong>${escapeHtml(current.name)}</strong>`;
+      turnBannerEl.style.color = current.color;
+      turnBannerEl.style.textShadow = `0 0 7px ${current.color}, 0 0 16px ${current.color}`;
+    }
+
+    function renderScores() {
+      scoresEl.innerHTML = '';
+      state.game.players.forEach((player, idx) => {
+        const item = document.createElement('div');
+        item.className = `score-item ${idx === state.game.currentPlayer ? 'active' : ''}`;
+        item.innerHTML = `
+          <span class="score-dot" style="color:${player.color};background:${player.color}"></span>
+          <span style="color:${player.color};text-shadow:0 0 9px ${player.color}">${escapeHtml(player.name)}</span>
+          <strong>${player.score}</strong>
+        `;
+        scoresEl.appendChild(item);
+      });
+    }
+
+    function onCellClick(event) {
+      if (!state.game || state.game.gameOver) return;
+
+      const target = event.currentTarget;
+      const rowFromBottom = Number(target.dataset.row);
+      const col = Number(target.dataset.col);
+      const key = `${rowFromBottom}-${col}`;
+      const cell = state.game.cells.find(c => c.key === key);
+
+      if (!cell || cell.owner !== null) return;
+
+      const player = state.game.players[state.game.currentPlayer];
+      cell.owner = player.id;
+      state.game.filledCount += 1;
+
+      target.classList.add('filled');
+      target.style.background = toAlpha(player.color, 0.3);
+      target.style.borderColor = player.color;
+      target.style.boxShadow = `0 0 8px ${player.color}, inset 0 0 6px ${toAlpha(player.color, 0.6)}`;
+
+      let gained = 0;
+      const rowLen = state.game.n - rowFromBottom + 1;
+
+      if (!state.game.completedRows.has(rowFromBottom)) {
+        const rowCells = state.game.cells.filter(c => c.rowFromBottom === rowFromBottom);
+        const rowComplete = rowCells.every(c => c.owner !== null);
+        if (rowComplete) {
+          state.game.completedRows.add(rowFromBottom);
+          gained += rowLen;
+          drawLineOutline('row', rowFromBottom, player.color);
+          floatScoreAtLine('row', rowFromBottom, `+${rowLen}`, player.color);
+        }
+      }
+
+      if (!state.game.completedCols.has(col)) {
+        const colCells = state.game.cells.filter(c => c.col === col);
+        const colComplete = colCells.every(c => c.owner !== null);
+        if (colComplete) {
+          const colLen = state.game.n - col + 1;
+          state.game.completedCols.add(col);
+          gained += colLen;
+          drawLineOutline('col', col, player.color);
+          floatScoreAtLine('col', col, `+${colLen}`, player.color);
+        }
+      }
+
+      if (gained > 0) {
+        player.score += gained;
+      }
+
+      if (state.game.filledCount >= state.game.totalCells) {
+        endGame();
+        renderScores();
+        return;
+      }
+
+      state.game.currentPlayer = (state.game.currentPlayer + 1) % state.game.players.length;
+      renderTurnBanner();
+      renderScores();
+    }
+
+    function getLineCells(type, index) {
+      if (type === 'row') {
+        return Array.from(boardEl.querySelectorAll(`.cell[data-row="${index}"]`));
+      }
+      return Array.from(boardEl.querySelectorAll(`.cell[data-col="${index}"]`));
+    }
+
+    function drawLineOutline(type, index, color) {
+      const lineCells = getLineCells(type, index);
+      if (!lineCells.length) return;
+
+      const boardRect = boardShellEl.getBoundingClientRect();
+      const rects = lineCells.map(cell => cell.getBoundingClientRect());
+      const minX = Math.min(...rects.map(r => r.left));
+      const minY = Math.min(...rects.map(r => r.top));
+      const maxX = Math.max(...rects.map(r => r.right));
+      const maxY = Math.max(...rects.map(r => r.bottom));
+      const pad = 6;
+
+      const outline = document.createElement('div');
+      outline.className = 'outline';
+      outline.style.color = color;
+      outline.style.borderColor = color;
+      outline.style.left = `${minX - boardRect.left - pad}px`;
+      outline.style.top = `${minY - boardRect.top - pad}px`;
+      outline.style.width = `${maxX - minX + pad * 2}px`;
+      outline.style.height = `${maxY - minY + pad * 2}px`;
+      boardShellEl.appendChild(outline);
+    }
+
+    function floatScoreAtLine(type, index, text, color) {
+      const lineCells = getLineCells(type, index);
+      if (!lineCells.length) return;
+      const boardRect = boardShellEl.getBoundingClientRect();
+      const rects = lineCells.map(cell => cell.getBoundingClientRect());
+      const centerX = (Math.min(...rects.map(r => r.left)) + Math.max(...rects.map(r => r.right))) / 2;
+      const centerY = (Math.min(...rects.map(r => r.top)) + Math.max(...rects.map(r => r.bottom))) / 2;
+
+      const score = document.createElement('div');
+      score.className = 'float-score';
+      score.textContent = text;
+      score.style.color = color;
+      score.style.left = `${centerX - boardRect.left}px`;
+      score.style.top = `${centerY - boardRect.top}px`;
+      boardShellEl.appendChild(score);
+
+      score.addEventListener('animationend', () => score.remove());
+    }
+
+    function endGame() {
+      state.game.gameOver = true;
+      const sorted = [...state.game.players].sort((a, b) => b.score - a.score);
+      const winner = sorted[0];
+      winnerTextEl.textContent = `${winner.name} WINS!`;
+      winnerTextEl.style.color = winner.color;
+      winnerTextEl.style.textShadow = `0 0 12px ${winner.color}, 0 0 25px ${winner.color}`;
+      winOverlayEl.classList.remove('hidden');
+    }
+
+    playAgainBtn.addEventListener('click', () => {
+      resetSetup();
+    });
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    resetSetup();
+  </script>
+</body>
+</html>
