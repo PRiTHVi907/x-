@@ -835,7 +835,9 @@
         return;
       }
 
-      state.game.currentPlayer = (state.game.currentPlayer + 1) % state.game.players.length;
+      if (gained === 0) {
+        state.game.currentPlayer = (state.game.currentPlayer + 1) % state.game.players.length;
+      }
       renderTurnBanner();
       renderScores();
     }
